@@ -24,7 +24,7 @@ export default {
             default: 'ready'
         },
     },
-    expose: ['getTic', 'addUnit', 'changeStatus', 'changeStatus'],
+    expose: ['getTic', 'addUnit', 'changeStatus', ],
     data() {
         return {
             counter: 0,
