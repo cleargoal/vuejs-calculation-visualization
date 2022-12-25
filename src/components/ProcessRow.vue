@@ -1,10 +1,12 @@
 <template>
     <div class="row">
-        <span class="rowNum">{{rowNum}}.</span>
+        <span class="rowNum">Batt.: {{rowNumber}}.</span>
         <process-battery
             v-for="unit of units"
             :key="unit"
             ref="units"
+            :status="statuses[actualStatus]"
+            @unit-finish="getUnitFinish"
         />
     </div>
 </template>
@@ -19,14 +21,12 @@ export default {
             type: Number,
             default: 0,
         },
-        actualStatus: {
-            type: String,
-            default: 'ready'
-        },
     },
-    expose: ['getTic', 'addUnit', 'changeStatus', ],
+    expose: ['getTic', 'addUnit', 'changeStatus', 'actualStatus', 'rowNum'],
+    emits: ['row-unit-finish'],
     data() {
         return {
+            rowNumber: 0,
             counter: 0,
             units: [],
             newStatusInd: 'ready',
@@ -34,6 +34,7 @@ export default {
                 number: 0,
                 status: 'ready',
             },
+            actualStatus: 'ready',
             statuses: {
                 ready: {
                     name: 'ready',
@@ -68,6 +69,9 @@ export default {
             },
         }
     },
+    mounted() {
+        this.rowNumber = this.rowNum;
+    },
     methods: {
         getTic() {
             if (this.$refs.units) {
@@ -76,15 +80,20 @@ export default {
                 }}
         },
         addUnit(status) {
-            // console.log('Row addUnit');
+            console.log('Row addUnit');
             this.counter++;
             this.unit.number = this.counter;
             this.unit.status = status;
             this.units.push(this.unit);
         },
-        changeStatus(newStatus) {
-
+        async changeStatus(newStatus) {
+            console.log('Row. newStatus', newStatus);
+            this.actualStatus = newStatus;
+            await this.addUnit(newStatus);
         },
+        getUnitFinish(nextStatus) {
+            this.$emit('row-unit-finish', {nextStatus: nextStatus, rowNum: this.rowNum});
+        }
     },
 }
 </script>
@@ -99,5 +108,10 @@ export default {
     margin-right: .2rem;
     font-weight: bold;
 }
-
+.labels {
+    display: flex;
+    flex-direction: column;
+    margin-left: -6rem;
+    margin-top: -4rem;
+}
 </style>
