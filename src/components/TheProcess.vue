@@ -17,6 +17,7 @@
             :key="row.number"
             ref="rows"
             :row-num="batteryRow"
+            @row-unit-finish="getRowUnitFinish"
         />
     </div>
 </template>
@@ -32,10 +33,6 @@ export default {
             batteryRow: 0,
             batteries: [],
             startStatus: 'ready',
-            rowObj: {
-                number: 0,
-                status: 'ready',
-            },
             startDisable: false,
             stopDisable: true,
         }
@@ -58,12 +55,16 @@ export default {
                 if (this.interval) {
                     this.loop();
                 }
-            }, 200);
+            }, 10);
 
             await this.processing();
 
             for (let eachRow of this.$refs.rows) {
                 eachRow.getTic();
+            }
+
+            if (this.batteries.length > 17) {
+                this.stopLoop();
             }
         },
         stopLoop() {
@@ -72,9 +73,10 @@ export default {
         },
         addBatteryRow() {
             this.batteryRow++;
-            this.rowObj.number = this.batteryRow;
-            console.log('addBatteryRow.rowObj', this.rowObj);
-            this.batteries.push(this.rowObj);
+            this.batteries.push({
+                number: this.batteryRow,
+                status: 'ready',
+            });
         },
         async processing() {
             const worker = this.batteries.find(row => row.status === 'worker');
@@ -88,18 +90,48 @@ export default {
             }
             if (!worker && !ready) {
                 await this.addBatteryRow();
-                console.log('processing.addBatteryRow', this.$refs.rows);
-                // for (let eachRow of this.$refs.rows) {
-                //     eachRow.addUnit();
-                // }
+                console.log('processing: created Ready');
+                this.processAddUnit();
+            }
+            if (empty && ready) {
+                this.changeRowStatus(empty, 'incharge');
+                this.changeRowStatus(ready, 'charger');
+            }
+            if (empty && !charger) {
+                await this.addBatteryRow();
+                console.log('processing: create Charger');
+                this.processAddUnit();
+            }
+        },
+        processAddUnit() {
+            for (let eachRow of this.$refs.rows) {
+                if (!eachRow.$refs.units) {
+                    eachRow.addUnit();
+                }
             }
         },
         changeRowStatus(batteriesRow, newStatus) {
-            console.log(this.$refs.rows);
-            const rowCurrent = this.$refs.rows.find(row => row.actualStatus === 'ready');
-            console.log('rowCurrent', rowCurrent);
-            // rowCurrent.changeStatus(newStatus);
-            // batteriesRow.status = newStatus;
+            console.log('batteriesRow', batteriesRow);
+            let rowCurrent = null;
+            if (batteriesRow.status) {
+                // console.log('batteriesRow.status');
+                rowCurrent = this.$refs.rows.find(row => row.actualStatus === batteriesRow.status);
+                console.log('Process.changeRowStatus.rowCurrent.status', rowCurrent);
+            }
+            if (batteriesRow.actualStatus) {
+                // console.log('batteriesRow.actualStatus');
+                rowCurrent = this.$refs.rows.find(row => row.actualStatus === batteriesRow.actualStatus);
+                console.log('Process.changeRowStatus.rowCurrent.actualStatus', rowCurrent);
+            }
+            if (rowCurrent !== undefined && rowCurrent !== null) {
+                rowCurrent.changeStatus(newStatus);
+                batteriesRow.status = newStatus;
+            }
+        },
+        getRowUnitFinish(event) {
+            const rowCurrent = this.batteries.find(elem => elem.number === event.rowNum);
+            console.log('Process. UnitFinish: rowCurrent, rowCurrent.status, event.nextStatus', rowCurrent, rowCurrent.status, event.nextStatus);
+            rowCurrent.status = event.nextStatus;
         },
     },
 }
@@ -114,7 +146,7 @@ export default {
 .buttons-wrap {
     display: flex;
     width: 30%;
-
+    margin-bottom: 1rem;
 }
 .ss-button {
     padding: .5rem;
