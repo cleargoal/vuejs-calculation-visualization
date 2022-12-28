@@ -6,13 +6,15 @@
             <the-legend />
         </h2>
     </div>
+    <view-widget />
 </template>
 
 <script>
 import TheLegend from "@/components/TheLegend.vue";
+import ViewWidget from "@/components/ViewWidget.vue";
 
 export default {
-    components: {TheLegend},
+    components: {TheLegend, ViewWidget},
     props: {
         msg: {
             type: String,
