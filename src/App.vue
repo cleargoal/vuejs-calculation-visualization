@@ -5,7 +5,7 @@ import TheProcess from "@/components/TheProcess.vue";
 
 <template>
   <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="75" height="75" />
+    <img alt="Vue logo" class="logo" src="./assets/battery-charge.png" width="75" height="75" />
 
     <div class="wrapper">
       <HelloWorld msg="Batteries recharge" />

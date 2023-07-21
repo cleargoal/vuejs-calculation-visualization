@@ -1,7 +1,7 @@
 @import './base.css';
 
 #app {
-  max-width: 1600px;
+  width: 1600px;
   margin: 0 auto;
   padding: 0 2rem;
 
@@ -31,17 +31,18 @@ a,
 .red, .empty {
   text-decoration: none;
   background-color: hsla(0, 100%, 50%, 1);
+  color: white;
   transition: 0.4s;
 }
 
-.red, .worker {
+.brown, .worker {
   text-decoration: none;
   background-color: hsla(20, 100%, 30%, 1);
   color: white;
   transition: 0.4s;
 }
 
-.red, .charger {
+.blue, .charger {
   text-decoration: none;
   background-color: hsla(210, 100%, 40%, 1);
   color: white;
@@ -63,6 +64,5 @@ a,
   #app {
     display: grid;
     grid-template-rows: 1fr 4fr;
-    padding: 0 2rem;
   }
 }

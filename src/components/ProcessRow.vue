@@ -3,9 +3,9 @@
         <span class="rowNum">Batt.: {{rowNumber}}.</span>
         <process-battery
             v-for="unit of units"
-            :key="unit"
+            :key="unit.number"
             ref="units"
-            :status="statuses[actualStatus]"
+            :status="unit.status"
             @unit-finish="getUnitFinish"
         />
     </div>
@@ -13,6 +13,9 @@
 
 <script>
 import ProcessBattery from "@/components/ProcessBattery.vue";
+import { useCounterStore } from '@/stores/counter';
+import { mapState, mapActions } from 'pinia'
+
 export default {
     name: "ProcessRow",
     components: {ProcessBattery},
@@ -22,7 +25,7 @@ export default {
             default: 0,
         },
     },
-    expose: ['getTic', 'addUnit', 'changeStatus', 'actualStatus', 'rowNum'],
+    expose: ['getTic', 'addUnit', 'changeStatus', 'actualStatus', 'rowNumber'],
     emits: ['row-unit-finish'],
     data() {
         return {
@@ -30,70 +33,121 @@ export default {
             counter: 0,
             units: [],
             newStatusInd: 'ready',
-            unit: {
-                number: 0,
-                status: 'ready',
-            },
             actualStatus: 'ready',
             statuses: {
                 ready: {
                     name: 'ready',
-                    steps: false,
+                    steps: null,
+                    step: 1,
+                    charged: 100,
                     next: 'worker',
                     optional: 'charger',
+                    number: 0,
+                    allowTics: true,
+                    rowNumber: 0,
                 },
                 empty: {
                     name: 'empty',
-                    steps: false,
+                    steps: null,
+                    step: 1,
+                    charged: 0,
                     next: 'in-charge',
                     optional: '',
+                    number: 0,
+                    allowTics: true,
+                    rowNumber: 0,
                 },
                 incharge: {
                     name: 'incharge',
                     steps: 115,
+                    step: 1,
+                    charged: 0,
                     next: 'ready',
                     optional: 'worker',
+                    number: 0,
+                    allowTics: true,
+                    rowNumber: 0,
                 },
                 worker: {
                     name: 'worker',
                     steps: 100,
+                    step: 1,
+                    charged: 100,
                     next: 'empty',
                     optional: '',
+                    number: 0,
+                    allowTics: true,
+                    rowNumber: 0,
                 },
                 charger: {
                     name: 'charger',
                     steps: 140,
+                    step: 1,
+                    charged: 100,
                     next: 'empty',
                     optional: '',
+                    number: 0,
+                    allowTics: true,
+                    rowNumber: 0,
+                },
+                trans: {
+                    name: 'transparent',
+                    steps: 0,
+                    step: 1,
+                    charged: 0,
+                    next: 'ready',
+                    optional: '',
+                    number: 0,
+                    allowTics: false,
+                    rowNumber: 0,
                 },
             },
         }
     },
-    mounted() {
+    computed: {
+        // note we are not passing an array, just one store after the other
+        // each store will be accessible as its id + 'Store'
+        ...mapState(useCounterStore, ['activeRowNum', 'generalCount']),
+    },
+    async mounted() {
         this.rowNumber = this.rowNum;
+        this.setRowNum(this.rowNumber);
+        await this.addUnit('trans', true);
+        // console.log('Row.mounted.after_addUnit.units/rowNumber', this.units, this.rowNumber);
     },
     methods: {
         getTic() {
-            if (this.$refs.units) {
-                for(let unit of this.$refs.units) {
-                    unit.getTic();
-                }}
+            if (this.$refs.units.length > 0) {
+                this.$refs.units[this.$refs.units.length - 1].getTic();
+            }
         },
-        addUnit(status) {
-            console.log('Row addUnit');
+        addUnit(status = 'ready', start = false) {
+            this.setRowNum(this.rowNumber);
             this.counter++;
-            this.unit.number = this.counter;
-            this.unit.status = status;
-            this.units.push(this.unit);
+            let addStat = this.statuses[status];
+            addStat.number = this.counter;
+            addStat.rowNumber = this.rowNumber;
+            if (start === true) {
+                addStat.step = this.generalCount;
+            }
+            this.units.push({
+                status: addStat,
+            });
         },
         async changeStatus(newStatus) {
-            console.log('Row. newStatus', newStatus);
-            this.actualStatus = newStatus;
+            this.setRowNum(this.rowNumber);
+            this.setRowStatus(newStatus);
             await this.addUnit(newStatus);
+            this.actualStatus = newStatus;
         },
-        getUnitFinish(nextStatus) {
-            this.$emit('row-unit-finish', {nextStatus: nextStatus, rowNum: this.rowNum});
-        }
+        getUnitFinish(event) {
+            this.setRowNum(this.rowNumber);
+            this.$emit('row-unit-finish', event);
+        },
+        ...mapActions(useCounterStore, {
+                setRowNum: 'setActiveRow',
+                setRowStatus: 'setActualStatus',
+            }),
     },
 }
 </script>

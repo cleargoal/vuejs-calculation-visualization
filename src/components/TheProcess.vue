@@ -1,17 +1,5 @@
 <template>
     <div class="process">
-        <div class="buttons-wrap">
-            <button
-                class="ss-button"
-                :class="{'but-color':startDisable === false}"
-                :disabled="startDisable"
-                @click="generator"
-            >Start</button>
-            <button
-                :class="{'but-color':startDisable === true && stopDisable === false}"
-                :disabled="stopDisable"
-                @click="stopLoop">Stop</button>
-        </div>
         <process-row
             v-for="row of batteries"
             :key="row.number"
@@ -24,6 +12,9 @@
 
 <script>
 import ProcessRow from "@/components/ProcessRow.vue";
+import { useCounterStore } from '@/stores/counter';
+import { mapState, mapActions } from 'pinia'
+
 export default {
     name: "TheProcess",
     components: {ProcessRow},
@@ -35,15 +26,23 @@ export default {
             startStatus: 'ready',
             startDisable: false,
             stopDisable: true,
+            fullComplete: 0,
+            charging: [],
         }
     },
     computed: {
+        ...mapState(useCounterStore, {
+            getActiveRowNum:'activeRowNum',
+            getGeneralCount: 'generalCount',
+        }),
 
     },
-    mounted() {
-        // console.log('mounted');
-    },
     methods: {
+        ...mapActions(useCounterStore, {
+            setGeneral: 'setGeneralCount',
+            setBatteries: 'setProcBatteryRow',
+            setFullComplete: 'setStoreComplete',
+        }),
         async generator() {
             this.startDisable = true;
             this.stopDisable = false;
@@ -57,19 +56,22 @@ export default {
                 }
             }, 10);
 
+            this.setGeneral();
             await this.processing();
 
             for (let eachRow of this.$refs.rows) {
                 eachRow.getTic();
             }
 
-            if (this.batteries.length > 17) {
+            if (this.batteries.length > 11) {
                 this.stopLoop();
             }
         },
         stopLoop() {
             this.interval = false;
             this.stopDisable = true;
+            this.startDisable = false;
+            console.log(this.charging);
         },
         addBatteryRow() {
             this.batteryRow++;
@@ -77,61 +79,92 @@ export default {
                 number: this.batteryRow,
                 status: 'ready',
             });
+            this.setBatteries(this.batteryRow, 'ready', 'add');
         },
         async processing() {
-            const worker = this.batteries.find(row => row.status === 'worker');
-            const ready = this.batteries.find(row => row.status === 'ready');
-            const charger = this.batteries.find(row => row.status === 'charger');
-            const empty = this.batteries.find(row => row.status === 'empty');
-            const incharge = this.batteries.find(row => row.status === 'incharge');
+            const worker = this.$refs.rows ? this.$refs.rows.find(row => row.actualStatus === 'worker') : null;
+            const ready = this.$refs.rows ? this.$refs.rows.find(row => row.actualStatus === 'ready') : null;
+            const empty = this.$refs.rows ? this.$refs.rows.find(row => row.actualStatus === 'empty') : null;
+            const incharge = this.$refs.rows ? this.$refs.rows.find(row => row.actualStatus === 'incharge') : null;
+            const charger = this.$refs.rows ? this.$refs.rows.find(row => row.actualStatus === 'charger') : null;
 
-            if (ready && !worker) {
-                this.changeRowStatus(ready, 'worker');
-            }
             if (!worker && !ready) {
                 await this.addBatteryRow();
-                console.log('processing: created Ready');
-                this.processAddUnit();
             }
-            if (empty && ready) {
-                this.changeRowStatus(empty, 'incharge');
-                this.changeRowStatus(ready, 'charger');
+            if (!worker && ready) {
+                await this.changeRowStatus(ready, 'worker');
             }
-            if (empty && !charger) {
+            if (empty && !ready && !charger) {
                 await this.addBatteryRow();
-                console.log('processing: create Charger');
-                this.processAddUnit();
             }
-        },
-        processAddUnit() {
-            for (let eachRow of this.$refs.rows) {
-                if (!eachRow.$refs.units) {
-                    eachRow.addUnit();
+
+            // let countChargers = 0;
+            let countEmpties = [];
+            this.$refs.rows.forEach((item) => {
+            //     item.actualStatus === 'charger' ? countChargers++ : 0;
+                item.actualStatus === 'empty' ? countEmpties.push(item) : null;
+            });
+
+            if (empty && ready) {
+                // if (countChargers < countEmpties) {
+                countEmpties.forEach(item => {
+                    this.callCheckCharging(item, ready);
+                });
+                // }
+            }
+
+            if (empty && charger && !incharge) {
+                const scalp = {
+                    genStep: this.getGeneralCount,
+                    first: this.$refs.rows[0],
+                    sec: this.$refs.rows[1],
+                    third: this.$refs.rows[2],
+                    forth: this.$refs.rows[3],
+                };
+
+                await this.changeRowStatus(empty, 'incharge');
+            }
+
+            if (ready && worker && incharge && charger) {
+                this.fullComplete++;
+                this.setFullComplete(this.fullComplete);
+                if (this.fullComplete > 4) {
+                    // this.stopLoop();
                 }
             }
         },
-        changeRowStatus(batteriesRow, newStatus) {
-            console.log('batteriesRow', batteriesRow);
-            let rowCurrent = null;
-            if (batteriesRow.status) {
-                // console.log('batteriesRow.status');
-                rowCurrent = this.$refs.rows.find(row => row.actualStatus === batteriesRow.status);
-                console.log('Process.changeRowStatus.rowCurrent.status', rowCurrent);
-            }
-            if (batteriesRow.actualStatus) {
-                // console.log('batteriesRow.actualStatus');
-                rowCurrent = this.$refs.rows.find(row => row.actualStatus === batteriesRow.actualStatus);
-                console.log('Process.changeRowStatus.rowCurrent.actualStatus', rowCurrent);
-            }
-            if (rowCurrent !== undefined && rowCurrent !== null) {
-                rowCurrent.changeStatus(newStatus);
-                batteriesRow.status = newStatus;
+        async changeRowStatus(batteriesRow, newStatus) {
+                this.batteries[batteriesRow.rowNumber - 1].status = newStatus;
+                this.setBatteries(batteriesRow.rowNumber - 1, newStatus, 'che');
+            // console.log('Process.async changeRowStatus.batteriesRow: rowNumber/actualStatus', batteriesRow.rowNumber, batteriesRow.actualStatus);
+                if (batteriesRow.actualStatus === 'incharge' || batteriesRow.actualStatus === 'charger') {
+                    this.removeFromCharging(batteriesRow.actualStatus, batteriesRow.rowNumber);
+                }
+                await this.$refs.rows[batteriesRow.rowNumber - 1].changeStatus(newStatus);
+            },
+        async getRowUnitFinish(event) {
+            if (event.next === 'ready' || event.next === 'empty') {
+                this.batteries[event.parentNum - 1].status = event.next;
+                await this.$refs.rows[event.parentNum - 1].changeStatus(event.next);
             }
         },
-        getRowUnitFinish(event) {
-            const rowCurrent = this.batteries.find(elem => elem.number === event.rowNum);
-            console.log('Process. UnitFinish: rowCurrent, rowCurrent.status, event.nextStatus', rowCurrent, rowCurrent.status, event.nextStatus);
-            rowCurrent.status = event.nextStatus;
+        async callCheckCharging(empty, ready) {
+            if (!this.checkCharging(empty.rowNumber)) {
+                await this.changeRowStatus(ready, 'charger');
+                await this.changeRowStatus(empty, 'incharge');
+                this.addToCharging(empty.rowNumber, ready.rowNumber);
+                // console.log('charging:empty/ready', empty.rowNumber, ready.rowNumber);
+            }
+        },
+        addToCharging(empty, ready) {
+            this.charging.push({empty: empty, ready: ready});
+        },
+        checkCharging(empty) {
+            return this.charging.find(item =>  item.empty === empty);
+        },
+        removeFromCharging(key, value) { // key: 'empty'(incharge status) or 'ready'(charger status), value: 'rowNumber'
+            this.charging.splice(this.charging.findIndex(item => item[key] === value), 1);
+            console.log('charging.length, removeFromCharging(key, value)', this.charging.length, key, value);
         },
     },
 }
@@ -142,17 +175,5 @@ export default {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-}
-.buttons-wrap {
-    display: flex;
-    width: 30%;
-    margin-bottom: 1rem;
-}
-.ss-button {
-    padding: .5rem;
-    margin-right: .5rem;
-}
-.but-color {
-    background-color: chartreuse;
 }
 </style>

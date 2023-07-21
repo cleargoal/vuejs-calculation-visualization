@@ -10,6 +10,7 @@
   "dependencies": {
     "eslint": "^8.30.0",
     "eslint-plugin-vue": "^9.8.0",
+    "pinia": "^2.0.28",
     "vue": "^3.2.45"
   },
   "devDependencies": {

@@ -1,55 +1,82 @@
 <template>
     <div class="block">
-        <div>{{status.name}}</div>
         <div
             :style="{width: step+'px'}"
             class="battery"
-            :class="this.status.name"
-        ></div>
-        <div>step: {{step}}</div>
-        <div>statusSteps: {{status.steps}}</div>
+            :class="name"
+        >{{startStep}}/{{ step }}</div>
     </div>
 </template>
 
 <script>
+import { useCounterStore } from '@/stores/counter';
+import { mapState } from 'pinia'
+
 export default {
     name: "ProcessBattery",
     props: {
         status: {},
     },
-    expose: ['step','getTic'],
+    expose: ['step','getTic', 'allowTics'],
+    emits: ['unit-finish'],
     data() {
         return {
+            localStatus: {},
+            allowTics: true,
+            name: 'trans',
+            steps: null,
             step: 1,
-            statusSteps: null,
+            charged: 0,
+            next: 'worker',
+            optional: 'charger',
+            number: 0,
+            rowNumber: 0,
+            startStep: 0,
         }
     },
     computed: {
-        setChangeStatus() {
-            // return this.step === this.statusSteps ? this.changeStatus() : false;
-        },
+        // note we are not passing an array, just one store after the other
+        // each store will be accessible as its id + 'Store'
+        ...mapState(useCounterStore, {getGeneralCount:'generalCount'}),
     },
     watch: {
-        status(val) {
-            console.log('status', val);
-        },
-        step(val) {
-            return this.step === this.statusSteps ? this.changeStatus() : false;
+        allowTics(nVal) {
+            // console.log('Unit.watch.allowTics.nVal/number', nVal, this.number);
         },
     },
     mounted() {
-        this.statusSteps = this.status.steps;
-        console.log('mounted status', this.status);
+        this.localStatus = this.status;
+        this.name = this.status.name;
+        this.steps = this.status.steps;
+        this.step = this.status.step;
+        this.next = this.status.next;
+        this.optional = this.status.optional;
+        this.number = this.status.number;
+        this.allowTics = this.status.allowTics;
+        this.rowNumber = this.status.rowNumber;
+        this.startStep = this.getGeneralCount;
+        this.charged = this.status.charged;
     },
     methods: {
         getTic() {
-            if (this.statusSteps === this.status.steps) {
-                this.step++;
+            if (this.allowTics) {
+                if (this.steps === null || this.steps > this.step) {
+                    this.step++;
+                }
             }
-        },
-        changeStatus() {
-            alert('change status');
-
+            if (this.allowTics) {
+                if (this.name === 'worker' || this.name === 'charger') {
+                    this.charged--;
+                }
+                if (this.name === 'incharge') {
+                    this.charged++;
+                }
+            }
+            if(
+                (this.name === 'worker' || this.name === 'charger' || this.name === 'incharge')
+                && this.step >= this.steps) {
+                this.$emit('unit-finish', {next: this.next, parentNum: this.rowNumber});
+            }
         },
     },
 }
