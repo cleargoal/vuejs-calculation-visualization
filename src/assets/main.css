@@ -63,6 +63,6 @@ a,
 
   #app {
     display: grid;
-    grid-template-rows: 1fr 4fr;
+    grid-template-rows: 1fr 7fr;
   }
 }
