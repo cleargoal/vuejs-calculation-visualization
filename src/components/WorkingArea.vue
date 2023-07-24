@@ -1,20 +1,16 @@
 <template>
     <div class="greetings">
         <h1 class="green">{{ msg }}</h1>
-        <h2>
-            Legend:
-            <the-legend />
-        </h2>
     </div>
     <view-widget />
 </template>
 
 <script>
-import TheLegend from "@/components/TheLegend.vue";
+// import TheLegend from "@/components/TheLegend.vue";
 import ViewWidget from "@/components/ViewWidget.vue";
 
 export default {
-    components: {TheLegend, ViewWidget},
+    components: {/*TheLegend,*/ ViewWidget},
     props: {
         msg: {
             type: String,

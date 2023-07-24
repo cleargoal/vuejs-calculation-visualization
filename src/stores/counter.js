@@ -18,6 +18,9 @@ export const useCounterStore = defineStore('counter', {
         setGeneralCount() {
             this.generalCount++;
         },
+        resetGeneralCount() {
+            this.generalCount = 0;
+        },
         setActualStatus(status) {
             this.actualRowStatus = status;
         },
@@ -36,6 +39,11 @@ export const useCounterStore = defineStore('counter', {
                 gStep: this.generalCount,
                 procState: this.procBatts,
             });
-        }
+        },
+        fullReset() {
+            this.generalCount = 0;
+            this.procBatts = [];
+
+        },
     },
 })

@@ -1,14 +1,14 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
+import WorkingArea from './components/WorkingArea.vue'
 import TheProcess from "@/components/TheProcess.vue";
 </script>
 
 <template>
   <header>
-    <img alt="Vue logo" class="logo" src="./assets/battery-charge.png" width="75" height="75" />
+    <img alt="Vue logo" class="logo" src="../public/battery-charge.png" width="75" height="75" />
 
     <div class="wrapper">
-      <HelloWorld msg="Batteries recharge" />
+      <WorkingArea msg="Batteries recharge" />
     </div>
   </header>
 
